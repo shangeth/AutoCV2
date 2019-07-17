@@ -40,8 +40,39 @@ np.random.seed(1)
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 import torch.nn as nn
-from torch.autograd import Variable
 
+# PYTORCH
+# # Make pytorch model in torchModel class
+# class torchModel(nn.Module):
+#   def __init__(self, input_dim, output_dim):
+#     super(torchModel, self).__init__()
+#     self.fc1 = nn.Linear(input_dim, output_dim)
+#     # self.fc2 = nn.Linear(500, 300)
+#     # self.fc3 = nn.Linear(300, 200)
+#     # self.fc4 = nn.Linear(200, 100)
+#     # self.fc5 = nn.Linear(100, output_dim)
+#     # self.dropout = nn.Dropout(0.3)
+#     # self.relu = nn.ReLU()
+#     # self.sigmoid = nn.Sigmoid()
+
+#   def forward(self, x):
+#     x = x.view(x.size(0), -1)
+#     x = self.fc1(x)
+    # # x = self.dropout(x)
+    # # x = self.relu(x)
+    # # x = self.fc2(x)
+    # # x = self.dropout(x)
+    # # x = self.relu(x)
+    # # x = self.fc3(x)
+    # # x = self.dropout(x)
+    # # x = self.relu(x)
+    # # x = self.fc4(x)
+    # # x = self.dropout(x)
+    # # x = self.relu(x)
+    # # x = self.fc5(x)
+    # return x
+
+from torch.autograd import Variable
 class torchModel(nn.Module):
   def __init__(self, input_shape, output_dim):
     super(torchModel, self).__init__()
@@ -67,12 +98,53 @@ class torchModel(nn.Module):
     n_size = output_feat.data.view(1, -1).size(1)
     return n_size
 
+
   def forward(self, x):
     x = self.forward_cnn(x)
     x = x.view(x.size(0), -1)
     x = self.fc(x)
     x = self.log_softmax(x)
     return x
+
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+# from torch.autograd import Variable
+
+# class torchModel(nn.Module):
+#     def __init__(self, input_shape, output_size):
+#         super(torchModel, self).__init__()
+#         self.conv1 = nn.Conv2d(input_shape[0], 16, kernel_size=3)
+#         self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
+#         self.conv2_drop = nn.Dropout2d()
+#         self.conv3 = nn.Conv2d(32, 64, kernel_size=3)
+#         self.output_size = output_size
+#         n_size = self._get_conv_output(input_shape)
+        
+#         self.fc1 = nn.Linear(n_size, 500)
+#         self.fc2 = nn.Linear(500, self.output_size)
+
+#     # generate input sample and forward to get shape
+#     def _get_conv_output(self, shape):
+#         bs = 1
+#         input = Variable(torch.rand(bs, *shape))
+#         output_feat = self._forward_features(input)
+#         n_size = output_feat.data.view(bs, -1).size(1)
+#         return n_size
+
+#     def _forward_features(self, x):
+#         x = F.relu(F.max_pool2d(self.conv1(x), 2))
+#         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+#         x = F.relu(F.max_pool2d(self.conv3(x), 2))
+#         return x
+
+#     def forward(self, x):
+#         x = self._forward_features(x)
+#         x = x.view(x.size(0), -1)
+#         x = F.relu(self.fc1(x))
+#         x = F.dropout(x, training=self.training)
+#         x = F.relu(self.fc2(x))
+#         return F.log_softmax(x)
 
 
 class Model(algorithm.Algorithm):
@@ -105,9 +177,6 @@ class Model(algorithm.Algorithm):
     print(self.pytorchmodel)
     if torch.cuda.is_available(): self.pytorchmodel.cuda()
 
-    self.criterion = nn.BCEWithLogitsLoss()
-    self.optimizer = torch.optim.Adam(self.pytorchmodel.parameters(), lr=1e-4)
-
 
      # Attributes for managing time budget
     # Cumulated number of training steps
@@ -123,10 +192,10 @@ class Model(algorithm.Algorithm):
 
     # PYTORCH
     # Critical number for early stopping
-    self.num_epochs_we_want_to_train = 50
+    self.num_epochs_we_want_to_train = 200
 
     # no of examples at each step/batch
-    self.batch_size = 500
+    self.batch_size = 30
 
     
 
@@ -293,8 +362,9 @@ class Model(algorithm.Algorithm):
       # PYTORCH
 
       #Training loop inside
-      
-      self.trainloop(self.criterion, self.optimizer, steps=steps_to_train)
+      criterion = nn.BCEWithLogitsLoss()
+      optimizer = torch.optim.Adam(self.pytorchmodel.parameters(), lr=1e-2)
+      self.trainloop(criterion, optimizer, steps=steps_to_train)
       train_end = time.time()
 
       # Update for time budget managing
