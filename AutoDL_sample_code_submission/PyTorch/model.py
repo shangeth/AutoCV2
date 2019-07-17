@@ -37,73 +37,38 @@ import time
 np.random.seed(42)
 torch.manual_seed(1)
 np.random.seed(1)
-tf.logging.set_verbosity(tf.logging.ERROR)
 
 import torch.nn as nn
 
 # PYTORCH
-# # Make pytorch model in torchModel class
-# class torchModel(nn.Module):
-#   def __init__(self, input_dim, output_dim):
-#     super(torchModel, self).__init__()
-#     self.fc1 = nn.Linear(input_dim, output_dim)
-#     # self.fc2 = nn.Linear(500, 300)
-#     # self.fc3 = nn.Linear(300, 200)
-#     # self.fc4 = nn.Linear(200, 100)
-#     # self.fc5 = nn.Linear(100, output_dim)
-#     # self.dropout = nn.Dropout(0.3)
-#     # self.relu = nn.ReLU()
-#     # self.sigmoid = nn.Sigmoid()
-
-#   def forward(self, x):
-#     x = x.view(x.size(0), -1)
-#     x = self.fc1(x)
-    # # x = self.dropout(x)
-    # # x = self.relu(x)
-    # # x = self.fc2(x)
-    # # x = self.dropout(x)
-    # # x = self.relu(x)
-    # # x = self.fc3(x)
-    # # x = self.dropout(x)
-    # # x = self.relu(x)
-    # # x = self.fc4(x)
-    # # x = self.dropout(x)
-    # # x = self.relu(x)
-    # # x = self.fc5(x)
-    # return x
-
-from torch.autograd import Variable
+# Make pytorch model in torchModel class
 class torchModel(nn.Module):
-  def __init__(self, input_shape, output_dim):
+  def __init__(self, input_dim, output_dim):
     super(torchModel, self).__init__()
-    if input_shape[1] == 1:
-      self.cnn1 = nn.Conv3d(input_shape[0], 16, (1,3,3))
-    else:
-      self.cnn1 = nn.Conv3d(input_shape[0], 16, 3)
-    self.pool = nn.MaxPool3d(2,2)
-    self.relu = nn.ReLU()  
-    fc_size = self.get_fc_size(input_shape)
-    self.fc = nn.Linear(fc_size, output_dim)
-    self.log_softmax = nn.LogSoftmax()
-  
-  def forward_cnn(self, x):
-    x = self.cnn1(x)
-    x = self.pool(x)
-    x = self.relu(x)
-    return x
-
-  def get_fc_size(self, input_shape):
-    sample_input = Variable(torch.rand(1, *input_shape))
-    output_feat = self.forward_cnn(sample_input)
-    n_size = output_feat.data.view(1, -1).size(1)
-    return n_size
-
+    self.fc1 = nn.Linear(input_dim, output_dim)
+    # self.fc2 = nn.Linear(500, 300)
+    # self.fc3 = nn.Linear(300, 200)
+    # self.fc4 = nn.Linear(200, 100)
+    # self.fc5 = nn.Linear(100, output_dim)
+    # self.dropout = nn.Dropout(0.3)
+    # self.relu = nn.ReLU()
+    # self.sigmoid = nn.Sigmoid()
 
   def forward(self, x):
-    x = self.forward_cnn(x)
     x = x.view(x.size(0), -1)
-    x = self.fc(x)
-    x = self.log_softmax(x)
+    x = self.fc1(x)
+    # x = self.dropout(x)
+    # x = self.relu(x)
+    # x = self.fc2(x)
+    # x = self.dropout(x)
+    # x = self.relu(x)
+    # x = self.fc3(x)
+    # x = self.dropout(x)
+    # x = self.relu(x)
+    # x = self.fc4(x)
+    # x = self.dropout(x)
+    # x = self.relu(x)
+    # x = self.fc5(x)
     return x
 
 # import torch
@@ -167,14 +132,12 @@ class Model(algorithm.Algorithm):
     if row_count == -1 or col_count == -1 : 
       row_count = self.default_image_size[0]
       col_count = self.default_image_size[1]
-    self.input_shape = (channel, sequence_size, row_count, col_count)
-    print('\n\n\nINPUT SHAPE = ', self.input_shape)
+    self.input_dim = row_count * col_count * channel * sequence_size
+    # print('INPUT SHAPE :', row_count,col_count,channel,sequence_size)
 
     # getting an object for the PyTorch Model class for Model Class
     # use CUDA if available
-    self.pytorchmodel = torchModel(self.input_shape, self.output_dim)
-    print('\nPyModel Defined\n')
-    print(self.pytorchmodel)
+    self.pytorchmodel = torchModel(self.input_dim, self.output_dim)
     if torch.cuda.is_available(): self.pytorchmodel.cuda()
 
 
@@ -261,15 +224,13 @@ class Model(algorithm.Algorithm):
       while True:
         try:
           x,y = sess.run(next_element)
-          # print(x.shape)
-          x = x.transpose(3,0,1,2)
+          x = x.transpose(0,3,1,2)
           features.append(x)
           labels.append(y)
         except tf.errors.OutOfRangeError:
           break
-      features = np.array(features)
+      features = np.vstack(features)
       features = torch.from_numpy(features)
-      print(features.shape)
       labels = torch.Tensor(labels)
       dataset = data_utils.TensorDataset(features, labels)
       loader = data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
@@ -277,11 +238,11 @@ class Model(algorithm.Algorithm):
       while True:
         try:
           x , _= sess.run(next_element)
-          x = x.transpose(3,0,1,2)
+          x = x.transpose(0,3,1,2)
           features.append(x)
         except tf.errors.OutOfRangeError:
           break
-      features = np.array(features)
+      features = np.vstack(features)
       features = torch.from_numpy(features)
       dataset = data_utils.TensorDataset(features)
       loader = data_utils.DataLoader(dataset, batch_size=self.batch_size)
@@ -330,7 +291,7 @@ class Model(algorithm.Algorithm):
       # print(torch.sigmoid(log_ps).data > 0.5)
       # print(labels)
       loss = criterion(log_ps, labels)
-      print('LOSSSSSSSSSSSS = ',loss.item())
+      # print('LOSSSSSSSSSSSS = ',loss.item())
       loss.backward()
       optimizer.step()
 
